@@ -14,7 +14,6 @@ import (
 // Client -> TCP Request -> RESP deserialze -> commands hander -> RESP serialze -> Response
 
 func main() {
-	// Setup tcp server
 	fmt.Println("Running on port: 6379")
 	l, err := net.Listen("tcp", ":6379")
 	if err != nil {
@@ -42,9 +41,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	// defer close to close later
 	defer conn.Close()
-	// loop to wait and receive commands
 	for {
 		response := resp.NewResp(conn)
 		value, err := response.Read()
@@ -77,8 +74,5 @@ func main() {
 
 		result := handlerResponse(args)
 		writer.Write(result)
-		// write out once finished
-		// writer.Write({typ: "string", str: "OK"})
-
 	}
 }
