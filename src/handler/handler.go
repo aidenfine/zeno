@@ -27,6 +27,10 @@ func ping(args []resp.Value) resp.Value {
 	}
 	return resp.Value{Type: "string", Str: args[0].Bulk}
 }
+
+// sets a value to a key
+//
+// syntax: `set name joe`
 func set(args []resp.Value) resp.Value {
 	fmt.Println(args, "args")
 	if len(args) != 2 {
@@ -41,6 +45,9 @@ func set(args []resp.Value) resp.Value {
 	return resp.Value{Type: "string", Str: "OK"}
 }
 
+// gets a value from key
+//
+// syntax: `get name joe`
 func get(args []resp.Value) resp.Value {
 	if len(args) != 1 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for GET"}
@@ -55,6 +62,9 @@ func get(args []resp.Value) resp.Value {
 	return resp.Value{Type: "bulk", Bulk: value}
 }
 
+// adds a key value pair to a map
+//
+// syntax: hset users user1 joe
 func hset(args []resp.Value) resp.Value {
 	if len(args) != 3 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for HSET command"}
@@ -70,6 +80,12 @@ func hset(args []resp.Value) resp.Value {
 	HSETsMu.Unlock()
 	return resp.Value{Type: "string", Str: "OK"}
 }
+
+// gets a value from a key val pair
+//
+// sytax: hget users user1
+//
+// returns: value
 func hget(args []resp.Value) resp.Value {
 	if len(args) != 2 {
 		return resp.Value{Type: "erorr", Str: "Invalid Arguments for HGET command"}
@@ -85,6 +101,9 @@ func hget(args []resp.Value) resp.Value {
 	return resp.Value{Type: "bulk", Bulk: value}
 }
 
+// gets all key, val pairs of hashmap
+//
+// syntax: hgetall users
 func hgetall(args []resp.Value) resp.Value {
 	if len(args) != 1 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for HGETALL command"}
