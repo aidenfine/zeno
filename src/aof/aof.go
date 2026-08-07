@@ -49,13 +49,13 @@ func (aof *Aof) Read(callback func(value resp.Value)) error {
 	response := resp.NewResp(aof.File)
 	for {
 		value, err := response.Read()
-		if err == nil {
-			callback(value)
-		}
 		if err == io.EOF {
 			break
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		callback(value)
 	}
 	return nil
 }

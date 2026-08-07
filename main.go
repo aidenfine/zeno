@@ -36,18 +36,22 @@ func main() {
 		}
 		hanlderFunc(args)
 	})
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println(err)
-		return
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		go handleConnection(conn, aof)
 	}
+}
+
+func handleConnection(conn net.Conn, aof *aof.Aof) {
 	defer conn.Close()
 	for {
 		response := resp.NewResp(conn)
 		value, err := response.Read()
-		fmt.Println(value)
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 		if value.Type != "array" {
@@ -56,23 +60,23 @@ func main() {
 		}
 		if len(value.Array) == 0 {
 			fmt.Println("Invalid Requested expected array len greater than 0")
+			continue
 		}
 		command := strings.ToUpper(value.Array[0].Bulk)
 		args := value.Array[1:]
 
-		writer := writer.NewWriter(conn)
+		w := writer.NewWriter(conn)
 		handlerResponse, ok := handler.Handlers[command]
 		if !ok {
 			fmt.Println("Invalid Command: ", command)
-			writer.Write(resp.Value{Type: "string", Str: ""})
+			w.Write(resp.Value{Type: "string", Str: ""})
 			continue
-
 		}
 		if command == "SET" || command == "HSET" {
 			aof.Write(value)
 		}
 
 		result := handlerResponse(args)
-		writer.Write(result)
+		w.Write(result)
 	}
 }
