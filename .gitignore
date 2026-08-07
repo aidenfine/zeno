@@ -1,4 +1,5 @@
-.env 
+.env
 dump.rdb
 database.aof
 zeno-build*
+local

@@ -92,9 +92,9 @@ func hget(args []resp.Value) resp.Value {
 	}
 	hash := args[0].Bulk
 	key := args[1].Bulk
-	HSETsMu.Lock()
+	HSETsMu.RLock()
 	value, ok := HSETs[hash][key]
-	HSETsMu.Unlock()
+	HSETsMu.RUnlock()
 	if !ok {
 		return resp.Value{Type: "null"}
 	}
@@ -110,8 +110,8 @@ func hgetall(args []resp.Value) resp.Value {
 	}
 	hash := args[0].Bulk
 
-	HSETsMu.Lock()
-	defer HSETsMu.Unlock()
+	HSETsMu.RLock()
+	defer HSETsMu.RUnlock()
 
 	values, ok := HSETs[hash]
 	if !ok {
