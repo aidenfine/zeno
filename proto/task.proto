@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "zeno/pb";
+
+package task;
+
+message Task {
+  string id = 1;
+  string title = 2;
+  bool completed = 3;
+}
+
+message SendTaskRequest {
+  Task task = 1;
+}
+
+message SendTaskResponse {
+  bool success = 1;
+}
+
+service TaskService {
+  rpc SendTask(SendTaskRequest) returns (SendTaskResponse);
+}
