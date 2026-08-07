@@ -1,6 +1,3 @@
 # Zeno 
 
-todo:
-- LRU/LFU
-- Key Expiry
-- Logs
+Simple and safe key value store.
