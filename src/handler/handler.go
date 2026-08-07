@@ -47,7 +47,7 @@ func set(args []resp.Value) resp.Value {
 
 // gets a value from key
 //
-// syntax: `get name joe`
+// syntax: `get name`
 func get(args []resp.Value) resp.Value {
 	if len(args) != 1 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for GET"}
@@ -88,7 +88,7 @@ func hset(args []resp.Value) resp.Value {
 // returns: value
 func hget(args []resp.Value) resp.Value {
 	if len(args) != 2 {
-		return resp.Value{Type: "erorr", Str: "Invalid Arguments for HGET command"}
+		return resp.Value{Type: "error", Str: "Invalid Arguments for HGET command"}
 	}
 	hash := args[0].Bulk
 	key := args[1].Bulk
