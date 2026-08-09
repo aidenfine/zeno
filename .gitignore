@@ -3,3 +3,5 @@ dump.rdb
 database.aof
 zeno-build*
 local
+*.local
+*.local*
