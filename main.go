@@ -115,7 +115,7 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 		args := value.Array[1:]
 		w := writer.NewWriter(conn)
 
-		result, err := n.SendToLeader(command, args)
+		result, err := n.SendCommand(command, args)
 		if err != nil {
 			w.Write(resp.Value{Type: "string", Str: "ERR " + err.Error()})
 			continue

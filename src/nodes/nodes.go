@@ -43,9 +43,26 @@ func MakeNodes() (*Nodes, error) {
 	return nodes, nil
 }
 
-func (n *Nodes) SendToLeader(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
+func (n *Nodes) SendCommand(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
+	// send to leader.
+	result, err := n.sendToNode(command, args, n.leader)
+	if err != nil {
+		return nil, err
+	}
 
-	conn, err := grpc.NewClient(n.leader+":6380", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// fan out to other nodes
+	for _, node := range n.nodes {
+		go func(node string) {
+			n.sendToNode(command, args, node)
+		}(node)
+	}
+
+	return result, nil
+
+}
+func (n *Nodes) sendToNode(command string, args []resp.Value, node string) (*pb.ForwardCommandResponse, error) {
+
+	conn, err := grpc.NewClient(node+":6380", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
