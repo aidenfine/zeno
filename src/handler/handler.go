@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"log/slog"
 	"sync"
 	"zeno/src/resp"
 )
@@ -32,7 +32,7 @@ func ping(args []resp.Value) resp.Value {
 //
 // syntax: `set name joe`
 func set(args []resp.Value) resp.Value {
-	fmt.Println(args, "args")
+	slog.Debug("set called", "args", args)
 	if len(args) != 2 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for SET"}
 	}

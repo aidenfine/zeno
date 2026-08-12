@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"zeno/pb"
 	"zeno/src/resp"
 
@@ -84,6 +84,6 @@ func (n *Nodes) sendToNode(command string, args []resp.Value, node string) (*pb.
 
 func (n *Nodes) printNodes() {
 	for _, v := range n.nodes {
-		fmt.Println("Node %s", v)
+		slog.Info("node", "address", v)
 	}
 }

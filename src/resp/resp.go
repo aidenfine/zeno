@@ -2,8 +2,8 @@ package resp
 
 import (
 	"bufio"
-	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 )
 
@@ -28,7 +28,7 @@ func (r *Resp) Read() (Value, error) {
 		}
 		return Value{}, nil
 	default:
-		fmt.Printf("Unknown type %v", string(_type))
+		slog.Warn("unknown RESP type", "type", string(_type))
 		return Value{}, nil
 	}
 }

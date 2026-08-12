@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"strings"
 	"sync"
@@ -33,7 +34,7 @@ func (s *taskServer) SendTask(ctx context.Context, req *pb.SendTaskRequest) (*pb
 	task.Id = fmt.Sprintf("%d", s.counter)
 	s.tasks = append(s.tasks, task)
 
-	fmt.Printf("gRPC: received task #%s - %s\n", task.Id, task.Title)
+	slog.Info("gRPC: received task", "id", task.Id, "title", task.Title)
 	return &pb.SendTaskResponse{Success: true}, nil
 }
 
@@ -48,23 +49,23 @@ func main() {
 	go func() {
 		lis, err := net.Listen("tcp", ":6380")
 		if err != nil {
-			fmt.Println("gRPC listen error:", err)
+			slog.Error("gRPC listen error", "error", err)
 			return
 		}
 		grpcServer := grpc.NewServer()
 		pb.RegisterTaskServiceServer(grpcServer, &taskServer{})
 		pb.RegisterNodeServiceServer(grpcServer, &nodes.NodeServer{})
 		reflection.Register(grpcServer)
-		fmt.Println("gRPC server running on port: 6380")
+		slog.Info("gRPC server running", "port", 6380)
 		if err := grpcServer.Serve(lis); err != nil {
-			fmt.Println("gRPC serve error:", err)
+			slog.Error("gRPC serve error", "error", err)
 		}
 	}()
 
-	fmt.Println("Running on port: 6379")
+	slog.Info("Running", "port", 6379)
 	l, err := net.Listen("tcp", ":6379")
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("listen error", "error", err)
 		return
 	}
 
@@ -88,7 +89,7 @@ func main() {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println(err)
+			slog.Error("accept error", "error", err)
 			continue
 		}
 		go handleConnection(conn, aof, n)
@@ -104,11 +105,11 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 			return
 		}
 		if value.Type != "array" {
-			fmt.Println("Invalid Request Expected an Array")
+			slog.Warn("invalid request, expected an array")
 			continue
 		}
 		if len(value.Array) == 0 {
-			fmt.Println("Invalid Requested expected array len greater than 0")
+			slog.Warn("invalid request, expected array len greater than 0")
 			continue
 		}
 		command := strings.ToUpper(value.Array[0].Bulk)
