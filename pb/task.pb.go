@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.35.1
-// source: task.proto
+// source: proto/task.proto
 
 package pb
 
@@ -32,7 +32,7 @@ type Task struct {
 
 func (x *Task) Reset() {
 	*x = Task{}
-	mi := &file_task_proto_msgTypes[0]
+	mi := &file_proto_task_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *Task) String() string {
 func (*Task) ProtoMessage() {}
 
 func (x *Task) ProtoReflect() protoreflect.Message {
-	mi := &file_task_proto_msgTypes[0]
+	mi := &file_proto_task_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *Task) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Task.ProtoReflect.Descriptor instead.
 func (*Task) Descriptor() ([]byte, []int) {
-	return file_task_proto_rawDescGZIP(), []int{0}
+	return file_proto_task_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Task) GetId() string {
@@ -90,7 +90,7 @@ type SendTaskRequest struct {
 
 func (x *SendTaskRequest) Reset() {
 	*x = SendTaskRequest{}
-	mi := &file_task_proto_msgTypes[1]
+	mi := &file_proto_task_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -102,7 +102,7 @@ func (x *SendTaskRequest) String() string {
 func (*SendTaskRequest) ProtoMessage() {}
 
 func (x *SendTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_task_proto_msgTypes[1]
+	mi := &file_proto_task_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -115,7 +115,7 @@ func (x *SendTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendTaskRequest.ProtoReflect.Descriptor instead.
 func (*SendTaskRequest) Descriptor() ([]byte, []int) {
-	return file_task_proto_rawDescGZIP(), []int{1}
+	return file_proto_task_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SendTaskRequest) GetTask() *Task {
@@ -134,7 +134,7 @@ type SendTaskResponse struct {
 
 func (x *SendTaskResponse) Reset() {
 	*x = SendTaskResponse{}
-	mi := &file_task_proto_msgTypes[2]
+	mi := &file_proto_task_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -146,7 +146,7 @@ func (x *SendTaskResponse) String() string {
 func (*SendTaskResponse) ProtoMessage() {}
 
 func (x *SendTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_task_proto_msgTypes[2]
+	mi := &file_proto_task_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,7 +159,7 @@ func (x *SendTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendTaskResponse.ProtoReflect.Descriptor instead.
 func (*SendTaskResponse) Descriptor() ([]byte, []int) {
-	return file_task_proto_rawDescGZIP(), []int{2}
+	return file_proto_task_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SendTaskResponse) GetSuccess() bool {
@@ -169,12 +169,131 @@ func (x *SendTaskResponse) GetSuccess() bool {
 	return false
 }
 
-var File_task_proto protoreflect.FileDescriptor
+type ForwardCommandRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"` // "SET", "GET"
+	Args          []string               `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`       // ["key", "val"]
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_task_proto_rawDesc = "" +
+func (x *ForwardCommandRequest) Reset() {
+	*x = ForwardCommandRequest{}
+	mi := &file_proto_task_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForwardCommandRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForwardCommandRequest) ProtoMessage() {}
+
+func (x *ForwardCommandRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_task_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForwardCommandRequest.ProtoReflect.Descriptor instead.
+func (*ForwardCommandRequest) Descriptor() ([]byte, []int) {
+	return file_proto_task_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ForwardCommandRequest) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ForwardCommandRequest) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+type ForwardCommandResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Result        string                 `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForwardCommandResponse) Reset() {
+	*x = ForwardCommandResponse{}
+	mi := &file_proto_task_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForwardCommandResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForwardCommandResponse) ProtoMessage() {}
+
+func (x *ForwardCommandResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_task_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForwardCommandResponse.ProtoReflect.Descriptor instead.
+func (*ForwardCommandResponse) Descriptor() ([]byte, []int) {
+	return file_proto_task_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ForwardCommandResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ForwardCommandResponse) GetResult() string {
+	if x != nil {
+		return x.Result
+	}
+	return ""
+}
+
+func (x *ForwardCommandResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *ForwardCommandResponse) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+var File_proto_task_proto protoreflect.FileDescriptor
+
+const file_proto_task_proto_rawDesc = "" +
 	"\n" +
-	"\n" +
-	"task.proto\x12\x04task\"J\n" +
+	"\x10proto/task.proto\x12\x04task\"J\n" +
 	"\x04Task\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +
@@ -183,59 +302,73 @@ const file_task_proto_rawDesc = "" +
 	"\x04task\x18\x01 \x01(\v2\n" +
 	".task.TaskR\x04task\",\n" +
 	"\x10SendTaskResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2H\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"E\n" +
+	"\x15ForwardCommandRequest\x12\x18\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\"t\n" +
+	"\x16ForwardCommandResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type2Z\n" +
+	"\vNodeService\x12K\n" +
+	"\x0eForwardCommand\x12\x1b.task.ForwardCommandRequest\x1a\x1c.task.ForwardCommandResponse2H\n" +
 	"\vTaskService\x129\n" +
 	"\bSendTask\x12\x15.task.SendTaskRequest\x1a\x16.task.SendTaskResponseB\tZ\azeno/pbb\x06proto3"
 
 var (
-	file_task_proto_rawDescOnce sync.Once
-	file_task_proto_rawDescData []byte
+	file_proto_task_proto_rawDescOnce sync.Once
+	file_proto_task_proto_rawDescData []byte
 )
 
-func file_task_proto_rawDescGZIP() []byte {
-	file_task_proto_rawDescOnce.Do(func() {
-		file_task_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_task_proto_rawDesc), len(file_task_proto_rawDesc)))
+func file_proto_task_proto_rawDescGZIP() []byte {
+	file_proto_task_proto_rawDescOnce.Do(func() {
+		file_proto_task_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_task_proto_rawDesc), len(file_proto_task_proto_rawDesc)))
 	})
-	return file_task_proto_rawDescData
+	return file_proto_task_proto_rawDescData
 }
 
-var file_task_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_task_proto_goTypes = []any{
-	(*Task)(nil),             // 0: task.Task
-	(*SendTaskRequest)(nil),  // 1: task.SendTaskRequest
-	(*SendTaskResponse)(nil), // 2: task.SendTaskResponse
+var file_proto_task_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_task_proto_goTypes = []any{
+	(*Task)(nil),                   // 0: task.Task
+	(*SendTaskRequest)(nil),        // 1: task.SendTaskRequest
+	(*SendTaskResponse)(nil),       // 2: task.SendTaskResponse
+	(*ForwardCommandRequest)(nil),  // 3: task.ForwardCommandRequest
+	(*ForwardCommandResponse)(nil), // 4: task.ForwardCommandResponse
 }
-var file_task_proto_depIdxs = []int32{
+var file_proto_task_proto_depIdxs = []int32{
 	0, // 0: task.SendTaskRequest.task:type_name -> task.Task
-	1, // 1: task.TaskService.SendTask:input_type -> task.SendTaskRequest
-	2, // 2: task.TaskService.SendTask:output_type -> task.SendTaskResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	3, // 1: task.NodeService.ForwardCommand:input_type -> task.ForwardCommandRequest
+	1, // 2: task.TaskService.SendTask:input_type -> task.SendTaskRequest
+	4, // 3: task.NodeService.ForwardCommand:output_type -> task.ForwardCommandResponse
+	2, // 4: task.TaskService.SendTask:output_type -> task.SendTaskResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_task_proto_init() }
-func file_task_proto_init() {
-	if File_task_proto != nil {
+func init() { file_proto_task_proto_init() }
+func file_proto_task_proto_init() {
+	if File_proto_task_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_task_proto_rawDesc), len(file_task_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_task_proto_rawDesc), len(file_proto_task_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
-		GoTypes:           file_task_proto_goTypes,
-		DependencyIndexes: file_task_proto_depIdxs,
-		MessageInfos:      file_task_proto_msgTypes,
+		GoTypes:           file_proto_task_proto_goTypes,
+		DependencyIndexes: file_proto_task_proto_depIdxs,
+		MessageInfos:      file_proto_task_proto_msgTypes,
 	}.Build()
-	File_task_proto = out.File
-	file_task_proto_goTypes = nil
-	file_task_proto_depIdxs = nil
+	File_proto_task_proto = out.File
+	file_proto_task_proto_goTypes = nil
+	file_proto_task_proto_depIdxs = nil
 }

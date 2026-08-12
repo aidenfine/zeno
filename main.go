@@ -8,7 +8,7 @@ import (
 	"sync"
 	"zeno/pb"
 	"zeno/src/aof"
-	"zeno/src/handler"
+	"zeno/src/nodes"
 	"zeno/src/resp"
 	"zeno/src/writer"
 
@@ -41,6 +41,10 @@ func (s *taskServer) SendTask(ctx context.Context, req *pb.SendTaskRequest) (*pb
 // Client -> TCP Request -> RESP deserialze -> commands hander -> RESP serialze -> Response
 
 func main() {
+	n, err := nodes.MakeNodes()
+	if err != nil {
+		panic("Failed to make nodes")
+	}
 	go func() {
 		lis, err := net.Listen("tcp", ":6380")
 		if err != nil {
@@ -49,6 +53,7 @@ func main() {
 		}
 		grpcServer := grpc.NewServer()
 		pb.RegisterTaskServiceServer(grpcServer, &taskServer{})
+		pb.RegisterNodeServiceServer(grpcServer, &nodes.NodeServer{})
 		reflection.Register(grpcServer)
 		fmt.Println("gRPC server running on port: 6380")
 		if err := grpcServer.Serve(lis); err != nil {
@@ -62,33 +67,35 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+
+	// TODO: remove aof support?
 	aof, err := aof.NewAof("database.aof")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer aof.Close()
-	aof.Read(func(value resp.Value) {
-		command := strings.ToUpper(value.Array[0].Bulk)
-		args := value.Array[1:]
-		hanlderFunc, ok := handler.Handlers[command]
-		if !ok {
-			fmt.Println("Invalid Command: ", command)
-			return
-		}
-		hanlderFunc(args)
-	})
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// defer aof.Close()
+	// aof.Read(func(value resp.Value) {
+	// 	command := strings.ToUpper(value.Array[0].Bulk)
+	// 	args := value.Array[1:]
+	// 	hanlderFunc, ok := handler.Handlers[command]
+	// 	if !ok {
+	// 		fmt.Println("Invalid Command: ", command)
+	// 		return
+	// 	}
+	// 	hanlderFunc(args)
+	// })
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		go handleConnection(conn, aof)
+		go handleConnection(conn, aof, n)
 	}
 }
 
-func handleConnection(conn net.Conn, aof *aof.Aof) {
+func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 	defer conn.Close()
 	for {
 		response := resp.NewResp(conn)
@@ -106,19 +113,13 @@ func handleConnection(conn net.Conn, aof *aof.Aof) {
 		}
 		command := strings.ToUpper(value.Array[0].Bulk)
 		args := value.Array[1:]
-
 		w := writer.NewWriter(conn)
-		handlerResponse, ok := handler.Handlers[command]
-		if !ok {
-			fmt.Println("Invalid Command: ", command)
-			w.Write(resp.Value{Type: "string", Str: ""})
+
+		result, err := n.SendToLeader(command, args)
+		if err != nil {
+			w.Write(resp.Value{Type: "string", Str: "ERR " + err.Error()})
 			continue
 		}
-		if command == "SET" || command == "HSET" {
-			aof.Write(value)
-		}
-
-		result := handlerResponse(args)
-		w.Write(result)
+		w.Write(resp.Value{Type: result.Type, Str: result.Result, Bulk: result.Result})
 	}
 }
