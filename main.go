@@ -7,10 +7,12 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 	"zeno/pb"
 	"zeno/src/aof"
 	"zeno/src/nodes"
 	"zeno/src/resp"
+	"zeno/src/utils"
 	"zeno/src/writer"
 
 	"google.golang.org/grpc"
@@ -46,6 +48,8 @@ func main() {
 	if err != nil {
 		panic("Failed to make nodes")
 	}
+
+	// grpc stuff
 	go func() {
 		lis, err := net.Listen("tcp", ":6380")
 		if err != nil {
@@ -67,6 +71,17 @@ func main() {
 	if err != nil {
 		slog.Error("listen error", "error", err)
 		return
+	}
+
+	// Only the leader drives heartbeats. Without this guard every node
+	// coordinates, so heartbeats multiply by the cluster size.
+	heartbeatStopChan := make(chan struct{})
+	if n.IsLeader() {
+		utils.RunOnInterval(30*time.Second, heartbeatStopChan, n.SendHeartbeat, func(failedNodes []string) {
+			if len(failedNodes) > 0 {
+				slog.Warn("nodes failed heartbeat", "nodes", failedNodes)
+			}
+		})
 	}
 
 	// TODO: remove aof support?
@@ -115,13 +130,6 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 		command := strings.ToUpper(value.Array[0].Bulk)
 		args := value.Array[1:]
 		w := writer.NewWriter(conn)
-
-		failedNodes, err := n.SendHeartbeat()
-		if err != nil {
-			slog.Info("failed to checkheartbeat", "error", err)
-			continue
-		}
-		slog.Info("failed heartbeat", "failed nodes", failedNodes)
 
 		result, err := n.SendCommand(command, args)
 		if err != nil {
