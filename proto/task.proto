@@ -17,21 +17,6 @@ message SendTaskRequest {
 message SendTaskResponse {
   bool success = 1;
 }
-message ForwardCommandRequest {
-    string command = 1; // "SET", "GET"
-    repeated string args = 2; // ["key", "val"]
-}
-
-message ForwardCommandResponse {
-    bool success = 1;
-    string result = 2;
-    string error = 3;
-    string type = 4;
-}
-
-service NodeService {
-    rpc ForwardCommand(ForwardCommandRequest) returns (ForwardCommandResponse);
-}
 
 service TaskService {
   rpc SendTask(SendTaskRequest) returns (SendTaskResponse);

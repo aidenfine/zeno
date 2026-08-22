@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"log/slog"
 	"zeno/pb"
 	"zeno/src/handler"
 	"zeno/src/resp"
@@ -9,6 +10,13 @@ import (
 
 type NodeServer struct {
 	pb.UnimplementedNodeServiceServer
+}
+
+func (s *NodeServer) Heartbeat(ctx context.Context, req *pb.NodeHeartbeatRequest) (*pb.NodeHeartbeatResponse, error) {
+	slog.Info("received heartbeat", "ping", req.Ping)
+	return &pb.NodeHeartbeatResponse{
+		Response: "OK",
+	}, nil
 }
 
 func (s *NodeServer) ForwardCommand(ctx context.Context, req *pb.ForwardCommandRequest) (*pb.ForwardCommandResponse, error) {

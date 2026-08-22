@@ -116,6 +116,13 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 		args := value.Array[1:]
 		w := writer.NewWriter(conn)
 
+		failedNodes, err := n.SendHeartbeat()
+		if err != nil {
+			slog.Info("failed to checkheartbeat", "error", err)
+			continue
+		}
+		slog.Info("failed heartbeat", "failed nodes", failedNodes)
+
 		result, err := n.SendCommand(command, args)
 		if err != nil {
 			w.Write(resp.Value{Type: "string", Str: "ERR " + err.Error()})
