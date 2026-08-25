@@ -20,6 +20,7 @@ func (s *NodeServer) Heartbeat(ctx context.Context, req *pb.NodeHeartbeatRequest
 }
 
 func (s *NodeServer) ForwardCommand(ctx context.Context, req *pb.ForwardCommandRequest) (*pb.ForwardCommandResponse, error) {
+	slog.Info("received command", "type", req.Command, "command", req.Args)
 	handlerFunc, ok := handler.Handlers[req.Command]
 	if !ok {
 		return &pb.ForwardCommandResponse{Success: false, Error: "invalid command"}, nil
