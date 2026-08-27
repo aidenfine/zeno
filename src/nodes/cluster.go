@@ -15,8 +15,9 @@ import (
 // coordinator. Outbound RPC mechanics live in peerClient (client.go);
 // inbound RPC handling lives in NodeServer (node_server.go).
 type Nodes struct {
-	leader string   // ip
-	nodes  []string // list of node ips (excludes the leader)
+	leader        string   // ip
+	nodes         []string // list of node ips (excludes the leader)
+	ipToContainer map[string]string
 }
 
 // hard coded for now but set a1 to leader
@@ -24,6 +25,12 @@ func MakeNodes() (*Nodes, error) {
 	nodes := &Nodes{
 		leader: "10.10.1.10",
 		nodes:  []string{"10.10.1.11", "10.10.2.10", "10.10.2.11"},
+		ipToContainer: map[string]string{
+			"10.10.1.10": "zeno-a1",
+			"10.10.1.11": "zeno-a2",
+			"10.10.2.10": "zeno-b1",
+			"10.10.2.11": "zeno-b2",
+		},
 	}
 
 	return nodes, nil
@@ -46,6 +53,30 @@ func (n *Nodes) IsLeader() bool {
 	}
 	return false
 }
+
+// RestartNodes takes a list of node ips (strings) and will wait for these nodes to come back to life.
+// If node B goes down RestartNode is responsible for making sure node B is up to date when node B comes
+// back up
+// func (n *Nodes) RestartNodes(nodes []string) []string {
+// 	deadNodes := []string{}
+
+// 	for i := range len(nodes) {
+// 		containerName, exists := n.ipToContainer[nodes[i]]
+// 		if !exists {
+// 			slog.Error("ip does not exist in container", "ip", nodes[i])
+// 			continue
+// 		}
+
+// 		cmd := exec.Command("docker", "restart", containerName)
+// 		_, err := cmd.Output()
+// 		if err != nil {
+// 			slog.Error("failed to restart container", "container", containerName, "error", err)
+// 			deadNodes = append(deadNodes, nodes[i])
+// 		}
+// 	}
+// 	return deadNodes
+
+// }
 
 func (n *Nodes) SendHeartbeat() ([]string, error) {
 	// check leader node first
