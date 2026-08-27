@@ -80,6 +80,7 @@ func main() {
 		utils.RunOnInterval(30*time.Second, heartbeatStopChan, n.SendHeartbeat, func(failedNodes []string) {
 			if len(failedNodes) > 0 {
 				slog.Warn("nodes failed heartbeat", "nodes", failedNodes)
+				// _ = n.RestartNodes(failedNodes)
 			}
 		})
 	}
