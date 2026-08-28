@@ -2,13 +2,20 @@ package utils
 
 import "zeno/src/resp"
 
-type message struct {
+type Message struct {
 	command string
 	arg     []resp.Value
 }
 
 type Queue[T any] struct {
 	items []T
+}
+
+func NewMessage(command string, arg []resp.Value) *Message {
+	return &Message{
+		command: command,
+		arg:     arg,
+	}
 }
 
 func NewQueue[T any]() *Queue[T] {

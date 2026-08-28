@@ -45,6 +45,7 @@ func (s *taskServer) SendTask(ctx context.Context, req *pb.SendTaskRequest) (*pb
 
 func main() {
 	n, err := nodes.MakeNodes()
+	messageQueue := utils.NewQueue[utils.Message]()
 	if err != nil {
 		panic("Failed to make nodes")
 	}
@@ -108,11 +109,11 @@ func main() {
 			slog.Error("accept error", "error", err)
 			continue
 		}
-		go handleConnection(conn, aof, n)
+		go handleConnection(conn, aof, n, messageQueue)
 	}
 }
 
-func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
+func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes, q *utils.Queue[utils.Message]) {
 	defer conn.Close()
 	for {
 		response := resp.NewResp(conn)
@@ -137,6 +138,14 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes) {
 			w.Write(resp.Value{Type: "string", Str: "ERR " + err.Error()})
 			continue
 		}
+
+		// Add to queue only if node is leader.
+		if n.IsLeader() {
+			m := utils.NewMessage(command, args)
+			q.Enqueue(*m)
+			slog.Info("queue length", "length", q.QueueLength())
+		}
+
 		w.Write(resp.Value{Type: result.Type, Str: result.Result, Bulk: result.Result})
 	}
 }
