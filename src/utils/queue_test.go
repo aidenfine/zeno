@@ -30,3 +30,28 @@ func TestQueue(t *testing.T) {
 	}
 
 }
+
+func TestClearQueue(t *testing.T) {
+	q := utils.NewQueue[int]()
+
+	for i := range 100 {
+		q.Enqueue(i)
+	}
+
+	q.ClearQueue()
+
+	if !q.IsEmpty() {
+		t.Errorf("queue is not empty")
+	}
+	if q.QueueLength() != 0 {
+		t.Errorf("queue len is not zero")
+	}
+
+	q.Enqueue(1)
+	item, _ := q.Dequeue()
+
+	if item != 1 {
+		t.Errorf("expected 1 got %d", item)
+	}
+
+}

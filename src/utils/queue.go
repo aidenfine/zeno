@@ -44,3 +44,7 @@ func (q *Queue[T]) IsEmpty() bool {
 func (q *Queue[T]) QueueLength() int {
 	return len(q.items)
 }
+func (q *Queue[T]) ClearQueue() {
+	q.items = nil
+	q.items = []T{}
+}
