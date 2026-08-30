@@ -1,6 +1,6 @@
 APP_EXECUTABLE=zeno-build
 
-.PHONY: proto build run clean
+.PHONY: proto build run clean bench loadtest
 
 proto:
 	rm -f pb/*.pb.go
@@ -13,6 +13,16 @@ build:
 
 run: build
 	./${APP_EXECUTABLE}-darwin
+
+# Component micro-benchmarks (no server needed): RESP parse/marshal, the
+# command handlers, and the queue. Runs anywhere.
+bench:
+	go test -run '^$$' -bench . -benchmem ./...
+
+# End-to-end load test against a running leader (see bench/main.go docs).
+# Pass flags through ARGS, e.g. `make loadtest ARGS="-cmd GET -clients 100"`.
+loadtest:
+	go run ./bench $(ARGS)
 
 clean:
 	go clean
