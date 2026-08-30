@@ -139,8 +139,8 @@ func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes, q *utils.Queue[
 			continue
 		}
 
-		// Add to queue only if node is leader.
-		if n.IsLeader() {
+		// Add to queue only if node is leader and command is a SET.
+		if n.IsLeader() && command == "SET" {
 			m := utils.NewMessage(command, args)
 			q.Enqueue(*m)
 			slog.Info("queue length", "length", q.QueueLength())
