@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"sort"
 	"sync"
 	"zeno/src/resp"
 	"zeno/src/utils"
@@ -16,13 +17,22 @@ import (
 // coordinator. This is the control-plane view of the cluster. Outbound RPC
 // mechanics live in peerClient (client.go); the data-plane server that
 // applies commands lives in the node package (node/server.go).
+
+const (
+	NoReadOrWriteState = 0
+	ReadState          = 1
+	WriteState         = 2
+	ReadAndWriteState  = 3
+	DownState          = 4
+)
+
 type Cluster struct {
 	leader        string   // ip
 	nodes         []string // list of node ips (excludes the leader)
 	ipToContainer map[string]string
-	nodeState     map[string]int // ip: node state (0 - no read or write, 1 - read, 2 - write, 3 - read and write (normal state), 5 - node is down)
+	nodeState     map[string]int // ip: node state (0 - no read or write, 1 - read, 2 - write, 3 - read and write (normal state), 4 - node is down)
+	rrCounter     uint64         // round-robin cursor for read routing
 	mu            sync.Mutex
-	downNodes     map[string]bool
 }
 
 // hard coded for now but set a1 to leader
@@ -37,13 +47,12 @@ func New() (*Cluster, error) {
 			"10.10.2.11": "zeno-b2",
 		},
 		nodeState: map[string]int{
-			"10.10.1.10": 2,
-			"10.10.1.11": 2,
-			"10.10.2.10": 2,
-			"10.10.2.11": 2,
+			"10.10.1.10": ReadAndWriteState,
+			"10.10.1.11": ReadAndWriteState,
+			"10.10.2.10": WriteState,
+			"10.10.2.11": ReadState,
 		},
-		mu:        sync.Mutex{},
-		downNodes: map[string]bool{},
+		mu: sync.Mutex{},
 	}
 
 	return nodes, nil
@@ -78,17 +87,17 @@ func (n *Cluster) ReconcileHealth(failedNodes []string) (recovered []string) {
 	failedSet := make(map[string]bool, len(failedNodes))
 	for _, ip := range failedNodes {
 		failedSet[ip] = true
-		if !n.downNodes[ip] {
+		if n.nodeState[ip] != DownState {
 			slog.Warn("node went down", "node", ip)
-			n.downNodes[ip] = true
+			n.nodeState[ip] = DownState
 		}
 	}
 
-	for ip := range n.downNodes {
+	for ip := range n.nodeState {
 		if !failedSet[ip] { // was down, responded this round
 			slog.Info("node recovered", "node", ip)
 			recovered = append(recovered, ip)
-			delete(n.downNodes, ip)
+			n.nodeState[ip] = ReadAndWriteState
 		}
 	}
 	return recovered
@@ -156,21 +165,87 @@ func (n *Cluster) SendHeartbeat() ([]string, error) {
 	return failedNodes, nil
 }
 
+// writeCommands classifies which verbs mutate state. Everything else is
+// treated as a read and can be served by any read-capable replica.
+var writeCommands = map[string]bool{
+	"SET":  true,
+	"HSET": true,
+}
+
+func isWrite(command string) bool {
+	return writeCommands[command]
+}
+
+// SendCommand is the single client-facing entry point: the client talks to
+// the control plane and we decide where the command goes. Writes go to the
+// leader (source of truth) and replicate to healthy followers; reads are
+// served by any healthy read-capable replica.
 func (n *Cluster) SendCommand(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
-	// send to leader.
+	if isWrite(command) {
+		return n.routeWrite(command, args)
+	}
+	return n.routeRead(command, args)
+}
+
+// routeWrite applies the write on the leader, then asynchronously replicates
+// it to every follower that is currently write-capable. The leader's result
+// is what the client sees; replication is fire-and-forget.
+func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
 	result, err := newPeerClient(n.leader).forwardCommand(command, args)
 	if err != nil {
 		return nil, err
 	}
 
-	// fan out to other nodes
 	for _, node := range n.nodes {
+		n.mu.Lock()
+		state := n.nodeState[node]
+		n.mu.Unlock()
+
+		if state != ReadAndWriteState && state != WriteState {
+			slog.Info("skipping replication due to state", "node", node, "state", state)
+			continue
+		}
+
 		go func(node string) {
-			newPeerClient(node).forwardCommand(command, args)
+			if _, err := newPeerClient(node).forwardCommand(command, args); err != nil {
+				slog.Error("replication failed", "node", node, "error", err)
+			}
 		}(node)
 	}
 
 	return result, nil
+}
+
+// routeRead picks one healthy read-capable node and serves the read from it.
+func (n *Cluster) routeRead(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
+	target := n.pickReadNode()
+	if target == "" {
+		return nil, errors.New("no read-capable node available")
+	}
+	return newPeerClient(target).forwardCommand(command, args)
+}
+
+// pickReadNode round-robins across all read-capable nodes (leader included).
+// Sorting gives a stable order so the round-robin counter is meaningful even
+// though nodeState iteration order is random.
+func (n *Cluster) pickReadNode() string {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	candidates := make([]string, 0, len(n.nodeState))
+	for ip, state := range n.nodeState {
+		if state == ReadAndWriteState || state == ReadState {
+			candidates = append(candidates, ip)
+		}
+	}
+	if len(candidates) == 0 {
+		return ""
+	}
+	sort.Strings(candidates)
+
+	target := candidates[n.rrCounter%uint64(len(candidates))]
+	n.rrCounter++
+	return target
 }
 
 func (n *Cluster) printNodes() {
