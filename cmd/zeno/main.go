@@ -10,7 +10,8 @@ import (
 	"time"
 	"zeno/pb"
 	"zeno/src/aof"
-	"zeno/src/nodes"
+	"zeno/src/controlplane"
+	"zeno/src/node"
 	"zeno/src/resp"
 	"zeno/src/utils"
 	"zeno/src/writer"
@@ -44,7 +45,7 @@ func (s *taskServer) SendTask(ctx context.Context, req *pb.SendTaskRequest) (*pb
 // Client -> TCP Request -> RESP deserialze -> commands hander -> RESP serialze -> Response
 
 func main() {
-	n, err := nodes.MakeNodes()
+	n, err := controlplane.New()
 	messageQueue := utils.NewQueue[utils.Message]()
 	if err != nil {
 		panic("Failed to make nodes")
@@ -59,7 +60,7 @@ func main() {
 		}
 		grpcServer := grpc.NewServer()
 		pb.RegisterTaskServiceServer(grpcServer, &taskServer{})
-		pb.RegisterNodeServiceServer(grpcServer, &nodes.NodeServer{})
+		pb.RegisterNodeServiceServer(grpcServer, &node.NodeServer{})
 		reflection.Register(grpcServer)
 		slog.Info("gRPC server running", "port", 6380)
 		if err := grpcServer.Serve(lis); err != nil {
@@ -81,7 +82,13 @@ func main() {
 		utils.RunOnInterval(30*time.Second, heartbeatStopChan, n.SendHeartbeat, func(failedNodes []string) {
 			if len(failedNodes) > 0 {
 				slog.Warn("nodes failed heartbeat", "nodes", failedNodes)
-				// _ = n.RestartNodes(failedNodes)
+			}
+			// Diff this round against known state; any node that was down and
+			// is now responding gets caught up from the replication queue.
+			for _, node := range n.ReconcileHealth(failedNodes) {
+				if err := n.RestartNode(node, messageQueue); err != nil {
+					slog.Error("failed to resync recovered node", "node", node, "error", err)
+				}
 			}
 		})
 	}
@@ -113,7 +120,7 @@ func main() {
 	}
 }
 
-func handleConnection(conn net.Conn, _ *aof.Aof, n *nodes.Nodes, q *utils.Queue[utils.Message]) {
+func handleConnection(conn net.Conn, _ *aof.Aof, n *controlplane.Cluster, q *utils.Queue[utils.Message]) {
 	defer conn.Close()
 	for {
 		response := resp.NewResp(conn)
