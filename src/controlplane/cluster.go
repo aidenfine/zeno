@@ -197,12 +197,16 @@ func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardComm
 	}
 
 	for _, node := range n.nodes {
+		// skip leader node.
+		if node == n.leader {
+			continue
+		}
 		n.mu.Lock()
 		state := n.nodeState[node]
 		n.mu.Unlock()
 
 		if state != ReadAndWriteState && state != WriteState {
-			slog.Info("skipping replication due to state", "node", node, "state", state)
+			slog.Info("skipping replication due to state", "node", n.ipToContainer[node], "state", state)
 			continue
 		}
 
