@@ -7,9 +7,9 @@ proto:
 	protoc --go_out=. --go_opt=module=zeno --go-grpc_out=. --go-grpc_opt=module=zeno proto/*.proto
 
 build:
-	GOARCH=amd64 GOOS=darwin go build -o ${APP_EXECUTABLE}-darwin main.go
-	GOARCH=amd64 GOOS=linux go build -o ${APP_EXECUTABLE}-linux main.go
-	GOARCH=amd64 GOOS=windows go build -o ${APP_EXECUTABLE}-windows main.go
+	GOARCH=amd64 GOOS=darwin go build -o ${APP_EXECUTABLE}-darwin ./cmd/zeno
+	GOARCH=amd64 GOOS=linux go build -o ${APP_EXECUTABLE}-linux ./cmd/zeno
+	GOARCH=amd64 GOOS=windows go build -o ${APP_EXECUTABLE}-windows ./cmd/zeno
 
 run: build
 	./${APP_EXECUTABLE}-darwin

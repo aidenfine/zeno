@@ -3,7 +3,7 @@
 // at the server, and reports throughput and latency percentiles.
 //
 // Because every client command is forwarded to the leader over gRPC (see
-// nodes.SendCommand), the target address must be a reachable *leader*. In
+// controlplane.SendCommand), the target address must be a reachable *leader*. In
 // practice that is the a1 node from docker-compose.local.yml, which publishes
 // 6379/6380 to the host:
 //

@@ -152,7 +152,7 @@ func BenchmarkHGetAll(b *testing.B) {
 // BenchmarkCommandRoundTrip measures the full per-command CPU cost the server
 // pays for one request: parse the RESP array, dispatch to the handler, and
 // marshal the reply. It deliberately excludes the network and the gRPC
-// leader-forwarding hop (see nodes.SendCommand) so it isolates command
+// leader-forwarding hop (see controlplane.SendCommand) so it isolates command
 // processing. Use the load generator in ./bench for end-to-end numbers.
 func BenchmarkCommandRoundTrip(b *testing.B) {
 	SETs = map[string]string{"foo": "bar"}

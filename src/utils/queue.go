@@ -3,8 +3,8 @@ package utils
 import "zeno/src/resp"
 
 type Message struct {
-	command string
-	arg     []resp.Value
+	Command string
+	Args    []resp.Value
 }
 
 type Queue[T any] struct {
@@ -13,8 +13,8 @@ type Queue[T any] struct {
 
 func NewMessage(command string, arg []resp.Value) *Message {
 	return &Message{
-		command: command,
-		arg:     arg,
+		Command: command,
+		Args:    arg,
 	}
 }
 
