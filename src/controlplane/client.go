@@ -3,6 +3,8 @@ package controlplane
 import (
 	"context"
 	"log/slog"
+	"net"
+	"strconv"
 	"time"
 	"zeno/pb"
 	"zeno/src/resp"
@@ -15,32 +17,27 @@ import (
 // It knows *how* to talk to a peer, not *whether* we should — that
 // policy lives in the cluster layer (see cluster.go).
 type peerClient struct {
-	addr string
+	addr    string
+	timeout time.Duration
+	conn    *grpc.ClientConn
+	client  pb.NodeServiceClient
 }
 
-func newPeerClient(addr string) *peerClient {
-	return &peerClient{addr: addr}
-}
-
-func (p *peerClient) dial() (*grpc.ClientConn, pb.NodeServiceClient, error) {
-	conn, err := grpc.NewClient(p.addr+":6380", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		slog.Error("failed to connect to node client", "error", err)
-		return nil, nil, err
+func newPeerClient(addr string, port int, timeout time.Duration) (*peerClient, error) {
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr = net.JoinHostPort(addr, strconv.Itoa(port))
 	}
-	return conn, pb.NewNodeServiceClient(conn), nil
-}
-
-func (p *peerClient) heartbeat() (*pb.NodeHeartbeatResponse, error) {
-	conn, client, err := p.dial()
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	return &peerClient{addr: addr, timeout: timeout, conn: conn, client: pb.NewNodeServiceClient(conn)}, nil
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+func (p *peerClient) heartbeat() (*pb.NodeHeartbeatResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
-	resp, err := client.Heartbeat(ctx, &pb.NodeHeartbeatRequest{
+	resp, err := p.client.Heartbeat(ctx, &pb.NodeHeartbeatRequest{
 		Ping: "PING",
 	})
 	if err != nil {
@@ -51,19 +48,13 @@ func (p *peerClient) heartbeat() (*pb.NodeHeartbeatResponse, error) {
 }
 
 func (p *peerClient) forwardCommand(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
-	conn, client, err := p.dial()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
 	strArgs := make([]string, len(args))
 	for i, a := range args {
 		strArgs[i] = a.Bulk
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
-	resp, err := client.ForwardCommand(ctx, &pb.ForwardCommandRequest{
+	resp, err := p.client.ForwardCommand(ctx, &pb.ForwardCommandRequest{
 		Command: command,
 		Args:    strArgs,
 	})
