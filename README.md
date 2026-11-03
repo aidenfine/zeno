@@ -13,8 +13,8 @@ make build
 Run each command in its own terminal:
 
 ```sh
-./bin/zeno-node --listen 127.0.0.1:6380
-./bin/zeno-node --listen 127.0.0.1:6381
+./bin/zeno-node --name node-a --listen 127.0.0.1:6380
+./bin/zeno-node --name node-b --listen 127.0.0.1:6381
 ./bin/zeno-controlplane --config examples/local.yaml
 ```
 

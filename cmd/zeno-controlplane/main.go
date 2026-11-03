@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log/slog"
+	"github.com/aidenfine/flog"
 	"net"
 	"os"
 	"os/signal"
@@ -13,14 +13,18 @@ import (
 	"zeno/src/config"
 	"zeno/src/controlplane"
 	"zeno/src/gateway"
+	"zeno/src/logger"
 	"zeno/src/utils"
 )
 
 func main() {
 	path := flag.String("config", "zeno.yaml", "control-plane configuration file")
+	name := flag.String("name", "zeno-controlplane", "service name used in logs")
 	flag.Parse()
+	logger.Init(*name)
+	defer logger.Log.Close()
 	if err := run(*path); err != nil {
-		slog.Error("control plane failed", "error", err)
+		logger.Log.Error("control plane failed", flog.Any("error", err))
 		os.Exit(1)
 	}
 }
@@ -53,17 +57,17 @@ func run(path string) error {
 			case <-ticker.C:
 				failed, err := cluster.SendHeartbeat()
 				if err != nil {
-					slog.Error("heartbeat failed", "error", err)
+					logger.Log.Error("heartbeat failed", flog.Any("error", err))
 					continue
 				}
 				for _, addr := range cluster.ReconcileHealth(failed) {
 					if err := cluster.RestartNode(addr, queue); err != nil {
-						slog.Error("node recovery failed", "node", addr, "error", err)
+						logger.Log.Error("node recovery failed", flog.Any("node", addr), flog.Any("error", err))
 					}
 				}
 			}
 		}
 	}()
-	slog.Info("control plane listening", "address", l.Addr())
+	logger.Log.Info("control plane listening", flog.Any("address", l.Addr()))
 	return gateway.Serve(ctx, l, cluster, queue)
 }

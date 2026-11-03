@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"log/slog"
+	"github.com/aidenfine/flog"
 	"time"
+	"zeno/src/logger"
 )
 
 // TODO: rework this function to maybe use genrics?
@@ -21,12 +22,12 @@ func RunOnInterval(interval time.Duration, stopChan <-chan struct{}, fn func() (
 			case <-ticker.C:
 				failedNodes, err := fn()
 				if err != nil {
-					slog.Info("failed to checkheartbeat", "error", err)
+					logger.Log.Info("failed to checkheartbeat", flog.Any("error", err))
 					continue
 				}
 				onResult(failedNodes)
 			case <-stopChan:
-				slog.Info("Stopping interval runner")
+				logger.Log.Info("Stopping interval runner")
 				return
 			}
 		}

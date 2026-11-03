@@ -2,9 +2,10 @@ package resp
 
 import (
 	"bufio"
+	"github.com/aidenfine/flog"
 	"io"
-	"log/slog"
 	"strconv"
+	"zeno/src/logger"
 )
 
 func NewResp(rd io.Reader) *Resp {
@@ -28,7 +29,7 @@ func (r *Resp) Read() (Value, error) {
 		}
 		return Value{}, nil
 	default:
-		slog.Warn("unknown RESP type", "type", string(_type))
+		logger.Log.Info("unknown RESP type", flog.Any("severity", "WARN"), flog.Any("type", string(_type)))
 		return Value{}, nil
 	}
 }

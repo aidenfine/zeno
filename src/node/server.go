@@ -2,9 +2,10 @@ package node
 
 import (
 	"context"
-	"log/slog"
+	"github.com/aidenfine/flog"
 	"zeno/pb"
 	"zeno/src/handler"
+	"zeno/src/logger"
 	"zeno/src/resp"
 )
 
@@ -13,14 +14,14 @@ type NodeServer struct {
 }
 
 func (s *NodeServer) Heartbeat(ctx context.Context, req *pb.NodeHeartbeatRequest) (*pb.NodeHeartbeatResponse, error) {
-	slog.Info("received heartbeat", "ping", req.Ping)
+	logger.Log.Info("received heartbeat", flog.Any("ping", req.Ping))
 	return &pb.NodeHeartbeatResponse{
 		Response: "OK",
 	}, nil
 }
 
 func (s *NodeServer) ForwardCommand(ctx context.Context, req *pb.ForwardCommandRequest) (*pb.ForwardCommandResponse, error) {
-	slog.Debug("received command", "type", req.Command, "command", req.Args)
+	logger.Log.Debug("received command", flog.Any("type", req.Command), flog.Any("command", req.Args))
 	handlerFunc, ok := handler.Handlers[req.Command]
 	if !ok {
 		return &pb.ForwardCommandResponse{Success: false, Error: "invalid command"}, nil
