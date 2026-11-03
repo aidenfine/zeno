@@ -1,0 +1,39 @@
+# zeno runtime configuration.
+# Pass a different file with: zeno-controlplane --config /path/to/zeno.yaml
+# (defaults shown for server/heartbeat/rpc/storage can be omitted)
+
+server:
+  resp_port: 6379 # client-facing RESP/TCP port
+  grpc_port: 6380 # legacy field; nodes use --listen instead
+
+heartbeat:
+  interval: 30s # how often the leader pings peers
+
+rpc:
+  dial_port: 6380 # port used to dial peers (their grpc_port)
+  timeout: 2s     # per-RPC deadline
+
+# Storage settings are reserved; node storage currently runs in memory.
+storage:
+  aof_enabled: false
+  aof_path: database.aof
+  fsync_interval: 1s
+
+cluster:
+  leader: 10.10.1.10
+  # Every node in the cluster (leader included). This single list replaces
+  # the maps that used to be hard coded in the source.
+  # state: read-write | read | write | none | down
+  nodes:
+    - ip: 10.10.1.10
+      name: zeno-a1
+      state: read-write
+    - ip: 10.10.1.11
+      name: zeno-a2
+      state: read-write
+    - ip: 10.10.2.10
+      name: zeno-b1
+      state: write
+    - ip: 10.10.2.11
+      name: zeno-b2
+      state: read

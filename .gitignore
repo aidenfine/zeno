@@ -5,3 +5,5 @@ zeno-build*
 local
 *.local
 *.local*
+
+/bin/

@@ -2,10 +2,11 @@ package controlplane
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
-	"net"
 	"sort"
 	"sync"
+	"zeno/src/config"
 	"zeno/src/resp"
 	"zeno/src/utils"
 
@@ -32,48 +33,38 @@ type Cluster struct {
 	ipToContainer map[string]string
 	nodeState     map[string]int // ip: node state (0 - no read or write, 1 - read, 2 - write, 3 - read and write (normal state), 4 - node is down)
 	rrCounter     uint64         // round-robin cursor for read routing
+	desiredState  map[string]int
+	rpc           config.RPCConfig
 	mu            sync.Mutex
 }
 
-// hard coded for now but set a1 to leader
-func New() (*Cluster, error) {
-	nodes := &Cluster{
-		leader: "10.10.1.10",
-		nodes:  []string{"10.10.1.11", "10.10.2.10", "10.10.2.11"},
-		ipToContainer: map[string]string{
-			"10.10.1.10": "zeno-a1",
-			"10.10.1.11": "zeno-a2",
-			"10.10.2.10": "zeno-b1",
-			"10.10.2.11": "zeno-b2",
-		},
-		nodeState: map[string]int{
-			"10.10.1.10": ReadAndWriteState,
-			"10.10.1.11": ReadAndWriteState,
-			"10.10.2.10": WriteState,
-			"10.10.2.11": ReadState,
-		},
-		mu: sync.Mutex{},
+// New builds the coordinator from configuration. Only the control-plane process owns it.
+func New(cfg config.ClusterConfig, rpc config.RPCConfig) (*Cluster, error) {
+	n := &Cluster{
+		leader:        cfg.Leader,
+		ipToContainer: make(map[string]string),
+		nodeState:     make(map[string]int),
+		desiredState:  make(map[string]int),
+		rpc:           rpc,
 	}
-
-	return nodes, nil
-}
-
-// IsLeader reports whether this process is the leader, by checking whether
-// the leader ip is bound to one of our local interfaces. Only the leader
-// should drive heartbeats/coordination — otherwise every node pings every
-// other node and heartbeats multiply by the cluster size.
-func (n *Cluster) IsLeader() bool {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		slog.Error("failed to read local interface addresses", "error", err)
-		return false
-	}
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.String() == n.leader {
-			return true
+	states := map[string]int{"none": NoReadOrWriteState, "read": ReadState, "write": WriteState, "read-write": ReadAndWriteState, "down": DownState}
+	for _, node := range cfg.Nodes {
+		state, ok := states[node.State]
+		if !ok {
+			return nil, fmt.Errorf("invalid state %q for node %s", node.State, node.IP)
+		}
+		n.ipToContainer[node.IP] = node.Name
+		n.nodeState[node.IP] = state
+		n.desiredState[node.IP] = state
+		if node.IP != cfg.Leader {
+			n.nodes = append(n.nodes, node.IP)
 		}
 	}
-	return false
+	return n, nil
+}
+
+func (n *Cluster) peer(addr string) *peerClient {
+	return newPeerClient(addr, n.rpc.DialPort, n.rpc.Timeout.Duration)
 }
 
 // ReconcileHealth diffs this round's heartbeat failures against the last
@@ -94,10 +85,10 @@ func (n *Cluster) ReconcileHealth(failedNodes []string) (recovered []string) {
 	}
 
 	for ip := range n.nodeState {
-		if !failedSet[ip] { // was down, responded this round
+		if n.nodeState[ip] == DownState && !failedSet[ip] && n.desiredState[ip] != DownState {
 			slog.Info("node recovered", "node", ip)
 			recovered = append(recovered, ip)
-			n.nodeState[ip] = ReadAndWriteState
+			n.nodeState[ip] = n.desiredState[ip]
 		}
 	}
 	return recovered
@@ -108,16 +99,19 @@ func (n *Cluster) ReconcileHealth(failedNodes []string) (recovered []string) {
 // back up
 func (n *Cluster) RestartNode(node string, queuedMessages *utils.Queue[utils.Message]) error {
 	// make sure node is in readonly
-	if n.nodeState[node] != 3 {
+	n.mu.Lock()
+	state := n.nodeState[node]
+	n.mu.Unlock()
+	if state != ReadAndWriteState {
 		// send command to update node state to other
-		slog.Info("node not in correct state", "nodeState", n.nodeState[node])
+		slog.Info("node not in correct state", "nodeState", state)
 	}
 
 	slog.Info("Starting restart node process", "queue_len", queuedMessages.QueueLength())
 	for !queuedMessages.IsEmpty() {
 		item, _ := queuedMessages.Dequeue()
 
-		res, err := newPeerClient(node).forwardCommand(item.Command, item.Args)
+		res, err := n.peer(node).forwardCommand(item.Command, item.Args)
 		if err != nil {
 			slog.Error("failed to get response", "error", err)
 			return err
@@ -132,27 +126,17 @@ func (n *Cluster) RestartNode(node string, queuedMessages *utils.Queue[utils.Mes
 }
 
 func (n *Cluster) SendHeartbeat() ([]string, error) {
-	// check leader node first
-	// TODO: handle leader failure later, do we vote a new leader?
-	result, err := newPeerClient(n.leader).heartbeat()
-	if err != nil {
-		return nil, err
-	}
-	if result.Response != "OK" {
-		slog.Info("leader node responded with failure", "error", result.Response)
-		return nil, errors.New("leader failed health check")
-	}
 
 	var (
 		mu          sync.Mutex
 		wg          sync.WaitGroup
 		failedNodes = []string{}
 	)
-	for _, node := range n.nodes {
+	for _, node := range append([]string{n.leader}, n.nodes...) {
 		wg.Add(1)
 		go func(node string) {
 			defer wg.Done()
-			resp, err := newPeerClient(node).heartbeat()
+			resp, err := n.peer(node).heartbeat()
 			slog.Info("heartbeat resp", "resp", resp)
 			if err != nil || resp.Response != "OK" {
 				mu.Lock()
@@ -191,7 +175,7 @@ func (n *Cluster) SendCommand(command string, args []resp.Value) (*pb.ForwardCom
 // it to every follower that is currently write-capable. The leader's result
 // is what the client sees; replication is fire-and-forget.
 func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardCommandResponse, error) {
-	result, err := newPeerClient(n.leader).forwardCommand(command, args)
+	result, err := n.peer(n.leader).forwardCommand(command, args)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +195,7 @@ func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardComm
 		}
 
 		go func(node string) {
-			if _, err := newPeerClient(node).forwardCommand(command, args); err != nil {
+			if _, err := n.peer(node).forwardCommand(command, args); err != nil {
 				slog.Error("replication failed", "node", node, "error", err)
 			}
 		}(node)
@@ -226,7 +210,7 @@ func (n *Cluster) routeRead(command string, args []resp.Value) (*pb.ForwardComma
 	if target == "" {
 		return nil, errors.New("no read-capable node available")
 	}
-	return newPeerClient(target).forwardCommand(command, args)
+	return n.peer(target).forwardCommand(command, args)
 }
 
 // pickReadNode round-robins across all read-capable nodes (leader included).

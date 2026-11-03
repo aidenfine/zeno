@@ -3,6 +3,8 @@ package controlplane
 import (
 	"context"
 	"log/slog"
+	"net"
+	"strconv"
 	"time"
 	"zeno/pb"
 	"zeno/src/resp"
@@ -15,15 +17,19 @@ import (
 // It knows *how* to talk to a peer, not *whether* we should — that
 // policy lives in the cluster layer (see cluster.go).
 type peerClient struct {
-	addr string
+	addr    string
+	timeout time.Duration
 }
 
-func newPeerClient(addr string) *peerClient {
-	return &peerClient{addr: addr}
+func newPeerClient(addr string, port int, timeout time.Duration) *peerClient {
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr = net.JoinHostPort(addr, strconv.Itoa(port))
+	}
+	return &peerClient{addr: addr, timeout: timeout}
 }
 
 func (p *peerClient) dial() (*grpc.ClientConn, pb.NodeServiceClient, error) {
-	conn, err := grpc.NewClient(p.addr+":6380", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(p.addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		slog.Error("failed to connect to node client", "error", err)
 		return nil, nil, err
@@ -38,7 +44,7 @@ func (p *peerClient) heartbeat() (*pb.NodeHeartbeatResponse, error) {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
 	resp, err := client.Heartbeat(ctx, &pb.NodeHeartbeatRequest{
 		Ping: "PING",
@@ -61,7 +67,7 @@ func (p *peerClient) forwardCommand(command string, args []resp.Value) (*pb.Forw
 	for i, a := range args {
 		strArgs[i] = a.Bulk
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
 	resp, err := client.ForwardCommand(ctx, &pb.ForwardCommandRequest{
 		Command: command,

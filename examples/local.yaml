@@ -1,0 +1,16 @@
+server:
+  resp_port: 6379
+heartbeat:
+  interval: 5s
+rpc:
+  dial_port: 6380
+  timeout: 2s
+cluster:
+  leader: 127.0.0.1:6380
+  nodes:
+    - ip: 127.0.0.1:6380
+      name: node-a
+      state: read-write
+    - ip: 127.0.0.1:6381
+      name: node-b
+      state: read-write
