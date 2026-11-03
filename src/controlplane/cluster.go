@@ -3,10 +3,11 @@ package controlplane
 import (
 	"errors"
 	"fmt"
-	"log/slog"
+	"github.com/aidenfine/flog"
 	"sort"
 	"sync"
 	"zeno/src/config"
+	"zeno/src/logger"
 	"zeno/src/resp"
 	"zeno/src/utils"
 
@@ -95,14 +96,14 @@ func (n *Cluster) ReconcileHealth(failedNodes []string) (recovered []string) {
 	for _, ip := range failedNodes {
 		failedSet[ip] = true
 		if n.nodeState[ip] != DownState {
-			slog.Warn("node went down", "node", ip)
+			logger.Log.Info("node went down", flog.Any("severity", "WARN"), flog.Any("node", ip))
 			n.nodeState[ip] = DownState
 		}
 	}
 
 	for ip := range n.nodeState {
 		if n.nodeState[ip] == DownState && !failedSet[ip] && n.desiredState[ip] != DownState {
-			slog.Info("node recovered", "node", ip)
+			logger.Log.Info("node recovered", flog.Any("node", ip))
 			recovered = append(recovered, ip)
 			n.nodeState[ip] = n.desiredState[ip]
 		}
@@ -120,19 +121,19 @@ func (n *Cluster) RestartNode(node string, queuedMessages *utils.Queue[utils.Mes
 	n.mu.Unlock()
 	if state != ReadAndWriteState {
 		// send command to update node state to other
-		slog.Info("node not in correct state", "nodeState", state)
+		logger.Log.Info("node not in correct state", flog.Any("nodeState", state))
 	}
 
-	slog.Info("Starting restart node process", "queue_len", queuedMessages.QueueLength())
+	logger.Log.Info("Starting restart node process", flog.Any("queue_len", queuedMessages.QueueLength()))
 	for !queuedMessages.IsEmpty() {
 		item, _ := queuedMessages.Dequeue()
 
 		res, err := n.peer(node).forwardCommand(item.Command, item.Args)
 		if err != nil {
-			slog.Error("failed to get response", "error", err)
+			logger.Log.Error("failed to get response", flog.Any("error", err))
 			return err
 		}
-		slog.Info("res from forwardcommand RestartNode()", "res", res)
+		logger.Log.Info("res from forwardcommand RestartNode()", flog.Any("res", res))
 	}
 
 	// TODO: we still need to sync from the main items, how do we ensure that the node stays up to date now.
@@ -153,7 +154,7 @@ func (n *Cluster) SendHeartbeat() ([]string, error) {
 		go func(node string) {
 			defer wg.Done()
 			resp, err := n.peer(node).heartbeat()
-			slog.Info("heartbeat resp", "resp", resp)
+			logger.Log.Info("heartbeat resp", flog.Any("resp", resp))
 			if err != nil || resp.Response != "OK" {
 				mu.Lock()
 				failedNodes = append(failedNodes, node)
@@ -206,13 +207,13 @@ func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardComm
 		n.mu.Unlock()
 
 		if state != ReadAndWriteState && state != WriteState {
-			slog.Info("skipping replication due to state", "node", n.ipToContainer[node], "state", state)
+			logger.Log.Info("skipping replication due to state", flog.Any("node", n.ipToContainer[node]), flog.Any("state", state))
 			continue
 		}
 
 		go func(node string) {
 			if _, err := n.peer(node).forwardCommand(command, args); err != nil {
-				slog.Error("replication failed", "node", node, "error", err)
+				logger.Log.Error("replication failed", flog.Any("node", node), flog.Any("error", err))
 			}
 		}(node)
 	}
@@ -254,6 +255,6 @@ func (n *Cluster) pickReadNode() string {
 
 func (n *Cluster) printNodes() {
 	for _, v := range n.nodes {
-		slog.Info("node", "address", v)
+		logger.Log.Info("node", flog.Any("address", v))
 	}
 }

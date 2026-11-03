@@ -1,19 +1,23 @@
+// Package logger provides the shared server logger.
 package logger
 
-import (
-	"bytes"
-	"io"
-	"sync"
+import "github.com/aidenfine/flog"
 
-	"github.com/charmbracelet/lipgloss"
-)
+// Log writes timestamped server logs to stderr. INFO excludes per-command debug logs.
+var Log = newLogger("zeno")
 
-type Logger struct {
-	w  io.Writer
-	b  bytes.Buffer
-	mu *sync.RWMutex
-	re *lipgloss.Renderer
+// Init sets the service name for all server packages. Call once during startup,
+// before starting any goroutines that log.
+func Init(name string) {
+	next := newLogger(name)
+	Log.Close()
+	Log = next
+}
 
-	level   int64
-	message string
+func newLogger(name string) *flog.Logger {
+	log, err := flog.New(false, name, flog.Config{LogLevel: "INFO", ShowTime: true})
+	if err != nil {
+		panic(err)
+	}
+	return log
 }
