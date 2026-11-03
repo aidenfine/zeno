@@ -16,6 +16,7 @@ func TestHealthTransitionsPreserveConfiguredRoles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 	if recovered := c.ReconcileHealth(nil); len(recovered) != 0 {
 		t.Fatalf("healthy nodes reported recovered: %v", recovered)
 	}

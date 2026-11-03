@@ -30,6 +30,7 @@ func TestGatewayRoutesToIndependentNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cluster.Close()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

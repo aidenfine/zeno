@@ -34,6 +34,7 @@ func run(path string) error {
 	if err != nil {
 		return err
 	}
+	defer cluster.Close()
 	l, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.Server.RESPPort)))
 	if err != nil {
 		return err

@@ -2,21 +2,9 @@
 // redis-benchmark. It opens N concurrent TCP connections, fires RESP commands
 // at the server, and reports throughput and latency percentiles.
 //
-// Because every client command is forwarded to the leader over gRPC (see
-// controlplane.SendCommand), the target address must be a reachable *leader*. In
-// practice that is the a1 node from docker-compose.local.yml, which publishes
-// 6379/6380 to the host:
-//
-//	docker compose -f docker-compose.local.yml up --build
-//	go run ./bench -addr 127.0.0.1:6379 -cmd SET -clients 50 -n 100000
-//
-// A single locally-run node (`make run`) is NOT the leader, so it tries to
-// forward to 10.10.1.10 and every request comes back as "ERR ..." after the
-// 2s dial timeout. The benchmark surfaces that as a high error count and
-// ~2s latencies, rather than reporting misleadingly fast throughput.
-//
-// For network-free, always-runnable component numbers use the Go benchmarks
-// instead: `make bench`.
+// Target the control-plane RESP listener, not a storage node's internal RPC port.
+// Example: go run ./bench -addr 127.0.0.1:6379 -cmd SET -clients 50 -n 100000
+// For component benchmarks use: make bench.
 package main
 
 import (
@@ -48,7 +36,7 @@ type config struct {
 
 func parseFlags() config {
 	var cfg config
-	flag.StringVar(&cfg.addr, "addr", "127.0.0.1:6379", "zeno leader address (host:port)")
+	flag.StringVar(&cfg.addr, "addr", "127.0.0.1:6379", "zeno control-plane address (host:port)")
 	flag.IntVar(&cfg.clients, "clients", 50, "number of concurrent connections")
 	flag.IntVar(&cfg.requests, "n", 100_000, "total number of requests to send")
 	flag.StringVar(&cfg.cmd, "cmd", "SET", "command to benchmark: SET, GET, PING, or MIXED")
@@ -74,7 +62,7 @@ func main() {
 	// Fail fast with a clear message if nothing is listening.
 	probe, err := net.DialTimeout("tcp", cfg.addr, cfg.timeout)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\ncannot reach %s: %v\nis a zeno leader running? see the docs at the top of bench/main.go\n", cfg.addr, err)
+		fmt.Fprintf(os.Stderr, "\ncannot reach %s: %v\nis the zeno control plane running? see the docs at the top of bench/main.go\n", cfg.addr, err)
 		os.Exit(1)
 	}
 	probe.Close()
@@ -349,7 +337,7 @@ func report(cfg config, s *stats) {
 	if sample, ok := s.errSample.Load().(string); ok && sample != "" {
 		fmt.Printf("\nfirst error: %s\n", sample)
 		if s.appErrs > 0 {
-			fmt.Printf("(hint: \"ERR\" replies usually mean the target isn't the leader — see bench/main.go docs)\n")
+			fmt.Printf("(hint: \"ERR\" replies usually mean a node RPC failed — see bench/main.go docs)\n")
 		}
 	}
 

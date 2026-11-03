@@ -34,7 +34,7 @@ type Cluster struct {
 	nodeState     map[string]int // ip: node state (0 - no read or write, 1 - read, 2 - write, 3 - read and write (normal state), 4 - node is down)
 	rrCounter     uint64         // round-robin cursor for read routing
 	desiredState  map[string]int
-	rpc           config.RPCConfig
+	peers         map[string]*peerClient
 	mu            sync.Mutex
 }
 
@@ -45,14 +45,21 @@ func New(cfg config.ClusterConfig, rpc config.RPCConfig) (*Cluster, error) {
 		ipToContainer: make(map[string]string),
 		nodeState:     make(map[string]int),
 		desiredState:  make(map[string]int),
-		rpc:           rpc,
+		peers:         make(map[string]*peerClient),
 	}
 	states := map[string]int{"none": NoReadOrWriteState, "read": ReadState, "write": WriteState, "read-write": ReadAndWriteState, "down": DownState}
 	for _, node := range cfg.Nodes {
 		state, ok := states[node.State]
 		if !ok {
+			n.Close()
 			return nil, fmt.Errorf("invalid state %q for node %s", node.State, node.IP)
 		}
+		peer, err := newPeerClient(node.IP, rpc.DialPort, rpc.Timeout.Duration)
+		if err != nil {
+			n.Close()
+			return nil, fmt.Errorf("create peer %s: %w", node.IP, err)
+		}
+		n.peers[node.IP] = peer
 		n.ipToContainer[node.IP] = node.Name
 		n.nodeState[node.IP] = state
 		n.desiredState[node.IP] = state
@@ -64,7 +71,16 @@ func New(cfg config.ClusterConfig, rpc config.RPCConfig) (*Cluster, error) {
 }
 
 func (n *Cluster) peer(addr string) *peerClient {
-	return newPeerClient(addr, n.rpc.DialPort, n.rpc.Timeout.Duration)
+	return n.peers[addr]
+}
+
+// Close releases the long-lived gRPC channels. Call after stopping request handling.
+func (n *Cluster) Close() error {
+	var errs []error
+	for _, peer := range n.peers {
+		errs = append(errs, peer.conn.Close())
+	}
+	return errors.Join(errs...)
 }
 
 // ReconcileHealth diffs this round's heartbeat failures against the last
