@@ -3,7 +3,6 @@ package controlplane
 import (
 	"errors"
 	"fmt"
-	"github.com/aidenfine/flog"
 	"sort"
 	"sync"
 	"zeno/src/config"
@@ -12,6 +11,8 @@ import (
 	"zeno/src/utils"
 
 	"zeno/pb"
+
+	"github.com/aidenfine/flog"
 )
 
 // Cluster holds cluster membership and coordination policy: who the leader
@@ -96,14 +97,14 @@ func (n *Cluster) ReconcileHealth(failedNodes []string) (recovered []string) {
 	for _, ip := range failedNodes {
 		failedSet[ip] = true
 		if n.nodeState[ip] != DownState {
-			logger.Log.Info("node went down", flog.Any("severity", "WARN"), flog.Any("node", ip))
+			logger.Log.Info("node went down", flog.String("severity", "WARN"), flog.String("node", ip))
 			n.nodeState[ip] = DownState
 		}
 	}
 
 	for ip := range n.nodeState {
 		if n.nodeState[ip] == DownState && !failedSet[ip] && n.desiredState[ip] != DownState {
-			logger.Log.Info("node recovered", flog.Any("node", ip))
+			logger.Log.Info("node recovered", flog.String("node", ip))
 			recovered = append(recovered, ip)
 			n.nodeState[ip] = n.desiredState[ip]
 		}
@@ -121,16 +122,16 @@ func (n *Cluster) RestartNode(node string, queuedMessages *utils.Queue[utils.Mes
 	n.mu.Unlock()
 	if state != ReadAndWriteState {
 		// send command to update node state to other
-		logger.Log.Info("node not in correct state", flog.Any("nodeState", state))
+		logger.Log.Info("node not in correct state", flog.Int("nodeState", state))
 	}
 
-	logger.Log.Info("Starting restart node process", flog.Any("queue_len", queuedMessages.QueueLength()))
+	logger.Log.Info("Starting restart node process", flog.Int("queue_len", queuedMessages.QueueLength()))
 	for !queuedMessages.IsEmpty() {
 		item, _ := queuedMessages.Dequeue()
 
 		res, err := n.peer(node).forwardCommand(item.Command, item.Args)
 		if err != nil {
-			logger.Log.Error("failed to get response", flog.Any("error", err))
+			logger.Log.Error("failed to get response", flog.String("error", err.Error()))
 			return err
 		}
 		logger.Log.Info("res from forwardcommand RestartNode()", flog.Any("res", res))
@@ -207,13 +208,13 @@ func (n *Cluster) routeWrite(command string, args []resp.Value) (*pb.ForwardComm
 		n.mu.Unlock()
 
 		if state != ReadAndWriteState && state != WriteState {
-			logger.Log.Info("skipping replication due to state", flog.Any("node", n.ipToContainer[node]), flog.Any("state", state))
+			logger.Log.Info("skipping replication due to state", flog.String("node", n.ipToContainer[node]), flog.Int("state", state))
 			continue
 		}
 
 		go func(node string) {
 			if _, err := n.peer(node).forwardCommand(command, args); err != nil {
-				logger.Log.Error("replication failed", flog.Any("node", node), flog.Any("error", err))
+				logger.Log.Error("replication failed", flog.String("node", node), flog.String("error", err.Error()))
 			}
 		}(node)
 	}
@@ -255,6 +256,6 @@ func (n *Cluster) pickReadNode() string {
 
 func (n *Cluster) printNodes() {
 	for _, v := range n.nodes {
-		logger.Log.Info("node", flog.Any("address", v))
+		logger.Log.Info("node", flog.String("address", v))
 	}
 }

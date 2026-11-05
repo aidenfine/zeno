@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/aidenfine/flog"
 	"net"
 	"os"
 	"os/signal"
@@ -15,6 +14,8 @@ import (
 	"zeno/src/gateway"
 	"zeno/src/logger"
 	"zeno/src/utils"
+
+	"github.com/aidenfine/flog"
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 	logger.Init(*name)
 	defer logger.Log.Close()
 	if err := run(*path); err != nil {
-		logger.Log.Error("control plane failed", flog.Any("error", err))
+		logger.Log.Error("control plane failed", flog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }
@@ -57,17 +58,17 @@ func run(path string) error {
 			case <-ticker.C:
 				failed, err := cluster.SendHeartbeat()
 				if err != nil {
-					logger.Log.Error("heartbeat failed", flog.Any("error", err))
+					logger.Log.Error("heartbeat failed", flog.String("error", err.Error()))
 					continue
 				}
 				for _, addr := range cluster.ReconcileHealth(failed) {
 					if err := cluster.RestartNode(addr, queue); err != nil {
-						logger.Log.Error("node recovery failed", flog.Any("node", addr), flog.Any("error", err))
+						logger.Log.Error("node recovery failed", flog.String("node", addr), flog.String("error", err.Error()))
 					}
 				}
 			}
 		}
 	}()
-	logger.Log.Info("control plane listening", flog.Any("address", l.Addr()))
+	logger.Log.Info("control plane listening", flog.String("address", l.Addr().String()))
 	return gateway.Serve(ctx, l, cluster, queue)
 }

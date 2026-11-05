@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/aidenfine/flog"
 	"net"
 	"os"
 	"os/signal"
@@ -12,6 +11,7 @@ import (
 	"zeno/src/logger"
 	"zeno/src/node"
 
+	"github.com/aidenfine/flog"
 	"google.golang.org/grpc"
 )
 
@@ -28,7 +28,7 @@ func main() {
 	defer logger.Log.Close()
 	l, err := net.Listen("tcp", *listen)
 	if err != nil {
-		logger.Log.Error("node listen failed", flog.Any("error", err))
+		logger.Log.Error("node listen failed", flog.String("error", err.Error()))
 		os.Exit(1)
 	}
 	server := grpc.NewServer()
@@ -36,9 +36,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() { <-ctx.Done(); server.Stop() }()
-	logger.Log.Info("storage node listening", flog.Any("address", l.Addr()))
+	logger.Log.Info("storage node listening", flog.String("address", l.Addr().String()))
 	if err := server.Serve(l); err != nil {
-		logger.Log.Error("node failed", flog.Any("error", err))
+		logger.Log.Error("node failed", flog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }

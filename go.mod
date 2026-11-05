@@ -3,7 +3,7 @@ module zeno
 go 1.26.10
 
 require (
-	github.com/aidenfine/flog v1.1.0
+	github.com/aidenfine/flog v1.3.0
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
