@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"github.com/aidenfine/flog"
 	"net"
 	"strconv"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"zeno/src/logger"
 	"zeno/src/resp"
 
+	"github.com/aidenfine/flog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -42,7 +42,7 @@ func (p *peerClient) heartbeat() (*pb.NodeHeartbeatResponse, error) {
 		Ping: "PING",
 	})
 	if err != nil {
-		logger.Log.Error("failed to send heartbeat to node", flog.Any("error", err))
+		logger.Log.Error("failed to send heartbeat to node", flog.String("error", err.Error()))
 		return nil, err
 	}
 	return resp, nil
@@ -60,7 +60,7 @@ func (p *peerClient) forwardCommand(command string, args []resp.Value) (*pb.Forw
 		Args:    strArgs,
 	})
 	if err != nil {
-		logger.Log.Error("failed to send message to node", flog.Any("error", err))
+		logger.Log.Error("failed to send message to node", flog.String("error", err.Error()))
 		return nil, err
 	}
 	return resp, nil

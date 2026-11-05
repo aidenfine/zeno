@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/aidenfine/flog"
 	"time"
 	"zeno/src/logger"
+
+	"github.com/aidenfine/flog"
 )
 
 // TODO: rework this function to maybe use genrics?
@@ -22,7 +23,7 @@ func RunOnInterval(interval time.Duration, stopChan <-chan struct{}, fn func() (
 			case <-ticker.C:
 				failedNodes, err := fn()
 				if err != nil {
-					logger.Log.Info("failed to checkheartbeat", flog.Any("error", err))
+					logger.Log.Error("failed to check heartbeat", flog.String("error", err.Error()))
 					continue
 				}
 				onResult(failedNodes)

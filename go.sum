@@ -1,5 +1,5 @@
-github.com/aidenfine/flog v1.1.0 h1:WYIxWF1jsDR6zN3Mh6dJ9WsttRFCptPI/Ia8gBnzDYw=
-github.com/aidenfine/flog v1.1.0/go.mod h1:CATrxiaTi4JznhtQpeN2eNKhAWmvKk2MeW297L9j+30=
+github.com/aidenfine/flog v1.3.0 h1:+ffC5IiUtP5CzxIjSufjesVHnTW08UE+IejkYhAoBzg=
+github.com/aidenfine/flog v1.3.0/go.mod h1:LeZ4kfPI+GorMd7VV4n0c73pCF6gbtJd0poHsSPQZS4=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=

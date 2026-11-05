@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"github.com/aidenfine/flog"
 	"sync"
 	"zeno/src/logger"
 	"zeno/src/resp"
+
+	"github.com/aidenfine/flog"
 )
 
 // our command handlers
@@ -33,7 +34,7 @@ func ping(args []resp.Value) resp.Value {
 //
 // syntax: `set name joe`
 func set(args []resp.Value) resp.Value {
-	logger.Log.Debug("set called", flog.Any("args", args))
+	logger.Log.Debug("set called", flog.Array("args", args))
 	if len(args) != 2 {
 		return resp.Value{Type: "error", Str: "Invalid Arguments for SET"}
 	}
